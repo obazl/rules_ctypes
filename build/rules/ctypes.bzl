@@ -266,7 +266,6 @@ module Functions = {fmod}.{fnfunctor}({fns})
     ################  TYPES  ################
     ocaml_module(
         name        = name + "_types_wrapper",
-        module_name = types_module_name,
         struct = name + "_types_wrapper.ml",
         opts   = OPTS,
         deps   = DEPS + [":" + name + "_CtypesTYPE",

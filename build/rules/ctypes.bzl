@@ -350,11 +350,72 @@ include {mod}.{tfunctor}({impl})
 
 ######################
 ctypes_module = macro(
+    doc = """
+
+== Example
+
+[source="starlark", title="MODULE.bazel"]
+----
+...
+bazel_dep(name = "tools_opam",  version = "1.0.0")
+opam = use_extension("@tools_opam//extensions:opam.bzl", "opam")
+bazel_dep(name = "rules_ctypes", version = "0.23.0")
+use_repo(opam, "opam.ctypes", "opam.ctypes-foreign")
+bazel_dep(name = "zstd", version = "1.5.5")
+...
+----
+
+[source="ocaml", title="zstd_types.ml"]
+----
+module Types (F : Ctypes.TYPE) = struct
+  ...
+end
+----
+
+[source="ocaml", title="zstd_functions.ml"]
+----
+open Ctypes
+module Types = Zstd_types.Types(Zstd_CtypesTYPE)
+module Functions (F : Cstubs.FOREIGN) = struct
+  let version_number = foreign "ZSTD_versionNumber" (void @-> returning int)
+  ...
+end
+----
+
+[source="starlark", title="BUILD.bazel"]
+----
+load("@rules_ocaml//build:rules.bzl", "ocaml_module")
+load("@rules_ctypes//build/rules:ctypes.bzl", "ctypes_module")
+ctypes_module(
+    name     = "zstd",
+    api_name = "zstd_stubs",
+    functors = {"zstd_types.ml"    : "Types",
+                "zstd_functions.ml": "Functions"},
+    cclibs   = ["@zstd"],
+    cchdrs   = ["zstd.h"]
+)
+ocaml_module(
+    name   = "Foo",
+    struct = "foo.ml",
+    deps   = [":zstd_stubs"]
+)
+----
+
+[source="ocaml", title="foo.ml"]
+----
+module F = Zstd_stubs.Functions
+module T = Zstd_stubs.Types
+let version () =
+  let n = F.version_number () in
+    ...
+----
+
+    """,
     implementation = _ctypes_module_impl,
     attrs = {
         # name attr == <api_stem>
         "api_name": attr.string(
-            doc = "Default: <api_stem>_api",
+            doc = "Name of the main build target. Otherwise, defaults to <name> of this target.",
             configurable=False
         ),
         "wrapper": attr.string(
